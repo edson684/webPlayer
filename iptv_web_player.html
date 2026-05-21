@@ -1,0 +1,299 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);background:var(--color-background-tertiary)}
+.app{display:grid;grid-template-rows:48px 1fr;height:100vh;min-height:600px}
+.topbar{background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:12px;padding:0 16px}
+.topbar h1{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tab{padding:6px 14px;font-size:13px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);cursor:pointer;background:transparent;color:var(--color-text-secondary)}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);font-weight:500}
+.main{display:grid;grid-template-columns:280px 1fr;overflow:hidden}
+.sidebar{background:var(--color-background-primary);border-right:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-top{padding:12px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.sidebar-top input{width:100%;padding:7px 10px;font-size:13px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-primary)}
+.channel-list{flex:1;overflow-y:auto}
+.channel-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:0.5px solid var(--color-border-tertiary)}
+.channel-item:hover{background:var(--color-background-secondary)}
+.channel-item.active{background:var(--color-background-info)}
+.ch-logo{width:36px;height:36px;border-radius:6px;background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--color-text-secondary);overflow:hidden;flex-shrink:0}
+.ch-logo img{width:100%;height:100%;object-fit:cover;border-radius:6px}
+.ch-info{flex:1;min-width:0}
+.ch-name{font-size:13px;font-weight:500;color:var(--color-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-group{font-size:11px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player-area{display:flex;flex-direction:column;background:#000;overflow:hidden}
+.video-wrap{flex:1;position:relative;background:#000;display:flex;align-items:center;justify-content:center}
+video{width:100%;height:100%;object-fit:contain}
+.placeholder{display:flex;flex-direction:column;align-items:center;gap:12px;color:#555}
+.placeholder i{font-size:48px}
+.placeholder p{font-size:14px}
+.info-bar{background:var(--color-background-primary);border-top:0.5px solid var(--color-border-tertiary);padding:10px 16px;display:flex;align-items:center;gap:12px}
+.info-bar .ch-now{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.info-bar .ch-url{font-size:11px;color:var(--color-text-secondary);margin-left:auto;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.panel{padding:16px;overflow-y:auto;background:var(--color-background-primary);display:none;flex-direction:column;gap:12px}
+.panel.active{display:flex}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:12px;color:var(--color-text-secondary);font-weight:500}
+.form-group input{padding:8px 10px;font-size:13px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-primary)}
+.btn-primary{padding:9px 16px;font-size:13px;font-weight:500;border:none;border-radius:var(--border-radius-md);background:#185FA5;color:#fff;cursor:pointer}
+.btn-primary:hover{background:#0c447c}
+.sep{font-size:12px;color:var(--color-text-tertiary);text-align:center;padding:4px 0}
+.status{font-size:12px;padding:8px 10px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.status.ok{background:var(--color-background-success);color:var(--color-text-success)}
+.status.err{background:var(--color-background-danger);color:var(--color-text-danger)}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--color-text-secondary);font-size:13px;padding:24px}
+.empty i{font-size:32px}
+.tag{font-size:10px;padding:2px 7px;border-radius:10px;background:var(--color-background-secondary);color:var(--color-text-secondary);font-weight:500}
+.tag.live{background:var(--color-background-danger);color:var(--color-text-danger)}
+</style>
+
+<h2 class="sr-only">Player IPTV web — suporte a M3U e Xtream Codes</h2>
+
+<div class="app">
+  <div class="topbar">
+    <i class="ti ti-brand-youtube" style="font-size:20px;color:#185FA5" aria-hidden="true"></i>
+    <h1>IPTV Web Player</h1>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('player')">Player</button>
+      <button class="tab" onclick="showTab('m3u')">M3U</button>
+      <button class="tab" onclick="showTab('xtream')">Xtream Codes</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="sidebar">
+      <div class="sidebar-top">
+        <input type="text" id="searchInput" placeholder="Buscar canal..." oninput="filterChannels()">
+      </div>
+      <div class="channel-list" id="channelList">
+        <div class="empty">
+          <i class="ti ti-list" aria-hidden="true"></i>
+          <span>Nenhum canal carregado</span>
+          <span style="font-size:11px;color:var(--color-text-tertiary)">Use as abas M3U ou Xtream para adicionar</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <div id="tab-player" class="player-area" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+        <div class="video-wrap" id="videoWrap">
+          <div class="placeholder" id="placeholder">
+            <i class="ti ti-player-play" aria-hidden="true"></i>
+            <p>Selecione um canal na lista</p>
+          </div>
+          <video id="videoEl" controls style="display:none"></video>
+        </div>
+        <div class="info-bar">
+          <span class="tag live" id="liveTag" style="display:none">AO VIVO</span>
+          <span class="ch-now" id="nowPlaying">Nada reproduzindo</span>
+          <span class="ch-url" id="nowUrl"></span>
+        </div>
+      </div>
+
+      <div id="tab-m3u" class="panel" style="max-width:480px;margin:0 auto;width:100%">
+        <div style="font-size:14px;font-weight:500;color:var(--color-text-primary)">Carregar playlist M3U</div>
+        <div class="form-group">
+          <label>URL da playlist (.m3u / .m3u8)</label>
+          <input type="text" id="m3uUrl" placeholder="http://servidor.com/playlist.m3u">
+        </div>
+        <button class="btn-primary" onclick="loadM3UFromUrl()">Carregar URL</button>
+        <div class="sep">— ou —</div>
+        <div class="form-group">
+          <label>Arquivo local</label>
+          <input type="file" id="m3uFile" accept=".m3u,.m3u8" onchange="loadM3UFromFile()">
+        </div>
+        <div id="m3uStatus" class="status" style="display:none"></div>
+      </div>
+
+      <div id="tab-xtream" class="panel" style="max-width:480px;margin:0 auto;width:100%">
+        <div style="font-size:14px;font-weight:500;color:var(--color-text-primary)">Xtream Codes API</div>
+        <div class="form-group">
+          <label>Servidor</label>
+          <input type="text" id="xtHost" placeholder="http://servidor.com:8080">
+        </div>
+        <div class="form-group">
+          <label>Usuário</label>
+          <input type="text" id="xtUser" placeholder="usuario">
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="xtPass" placeholder="senha">
+        </div>
+        <button class="btn-primary" onclick="loadXtream()">Conectar</button>
+        <div id="xtStatus" class="status" style="display:none"></div>
+        <div style="font-size:11px;color:var(--color-text-tertiary);line-height:1.6;padding:4px 0">
+          A API Xtream monta a URL de cada canal como:<br>
+          <code style="font-family:var(--font-mono);background:var(--color-background-secondary);padding:2px 5px;border-radius:4px">{host}/live/{user}/{pass}/{stream_id}.m3u8</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+<script>
+var channels = [];
+var filtered = [];
+var activeHls = null;
+
+function showTab(name) {
+  ['player','m3u','xtream'].forEach(t => {
+    var el = document.getElementById('tab-'+t);
+    if(t === 'player') el.style.display = name==='player'?'flex':'none';
+    else el.style.display = name===t?'flex':'none';
+  });
+  document.querySelectorAll('.tab').forEach((b,i) => {
+    b.classList.toggle('active', ['player','m3u','xtream'][i]===name);
+  });
+}
+
+function parseM3U(text) {
+  var lines = text.split('\n');
+  var result = [];
+  var current = null;
+  for(var i=0;i<lines.length;i++) {
+    var line = lines[i].trim();
+    if(line.startsWith('#EXTINF')) {
+      current = {name:'Canal', group:'', logo:'', url:''};
+      var nameMatch = line.match(/,(.+)$/);
+      if(nameMatch) current.name = nameMatch[1].trim();
+      var groupMatch = line.match(/group-title="([^"]*)"/);
+      if(groupMatch) current.group = groupMatch[1];
+      var logoMatch = line.match(/tvg-logo="([^"]*)"/);
+      if(logoMatch) current.logo = logoMatch[1];
+    } else if(line && !line.startsWith('#') && current) {
+      current.url = line;
+      result.push(current);
+      current = null;
+    }
+  }
+  return result;
+}
+
+function loadM3UFromUrl() {
+  var url = document.getElementById('m3uUrl').value.trim();
+  if(!url) return;
+  setStatus('m3uStatus','Carregando...','');
+  fetch(url)
+    .then(r => r.text())
+    .then(txt => {
+      var ch = parseM3U(txt);
+      if(!ch.length) { setStatus('m3uStatus','Nenhum canal encontrado no arquivo.','err'); return; }
+      channels = ch; filtered = ch;
+      renderChannels();
+      setStatus('m3uStatus', ch.length + ' canais carregados com sucesso.', 'ok');
+      showTab('player');
+    })
+    .catch(e => setStatus('m3uStatus','Erro ao carregar: '+e.message+'. Pode ser CORS.','err'));
+}
+
+function loadM3UFromFile() {
+  var file = document.getElementById('m3uFile').files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var ch = parseM3U(e.target.result);
+    if(!ch.length) { setStatus('m3uStatus','Nenhum canal encontrado.','err'); return; }
+    channels = ch; filtered = ch;
+    renderChannels();
+    setStatus('m3uStatus', ch.length + ' canais carregados.', 'ok');
+    showTab('player');
+  };
+  reader.readAsText(file);
+}
+
+function loadXtream() {
+  var host = document.getElementById('xtHost').value.trim().replace(/\/$/, '');
+  var user = document.getElementById('xtUser').value.trim();
+  var pass = document.getElementById('xtPass').value.trim();
+  if(!host||!user||!pass) { setStatus('xtStatus','Preencha todos os campos.','err'); return; }
+  var apiUrl = host+'/player_api.php?username='+encodeURIComponent(user)+'&password='+encodeURIComponent(pass)+'&action=get_live_streams';
+  setStatus('xtStatus','Conectando à API Xtream...','');
+  fetch(apiUrl)
+    .then(r => r.json())
+    .then(data => {
+      if(!Array.isArray(data)||!data.length) { setStatus('xtStatus','Sem canais ou credenciais inválidas.','err'); return; }
+      channels = data.map(function(s) {
+        return {
+          name: s.name || 'Canal',
+          group: s.category_name || '',
+          logo: s.stream_icon || '',
+          url: host+'/live/'+user+'/'+pass+'/'+s.stream_id+'.m3u8'
+        };
+      });
+      filtered = channels;
+      renderChannels();
+      setStatus('xtStatus', channels.length + ' canais carregados.', 'ok');
+      showTab('player');
+    })
+    .catch(e => setStatus('xtStatus','Erro de conexão: '+e.message+'. Verifique o host e CORS.','err'));
+}
+
+function renderChannels() {
+  var list = document.getElementById('channelList');
+  if(!filtered.length) {
+    list.innerHTML = '<div class="empty"><i class="ti ti-search" aria-hidden="true"></i><span>Nenhum resultado</span></div>';
+    return;
+  }
+  list.innerHTML = filtered.map(function(ch,i) {
+    var initials = ch.name.replace(/[^a-zA-Z0-9]/g,'').slice(0,2).toUpperCase()||'CH';
+    var logo = ch.logo ? '<img src="'+ch.logo+'" onerror="this.style.display=\'none\'">' : initials;
+    return '<div class="channel-item" id="chi-'+i+'" onclick="playChannel('+i+')">'
+      +'<div class="ch-logo">'+logo+'</div>'
+      +'<div class="ch-info"><div class="ch-name">'+escHtml(ch.name)+'</div>'
+      +'<div class="ch-group">'+escHtml(ch.group||'Sem categoria')+'</div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function filterChannels() {
+  var q = document.getElementById('searchInput').value.toLowerCase();
+  filtered = channels.filter(c => c.name.toLowerCase().includes(q)||(c.group||'').toLowerCase().includes(q));
+  renderChannels();
+}
+
+function playChannel(idx) {
+  var ch = filtered[idx];
+  if(!ch) return;
+  document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+  var item = document.getElementById('chi-'+idx);
+  if(item) item.classList.add('active');
+  var video = document.getElementById('videoEl');
+  document.getElementById('placeholder').style.display = 'none';
+  video.style.display = 'block';
+  document.getElementById('nowPlaying').textContent = ch.name;
+  document.getElementById('nowUrl').textContent = ch.url;
+  document.getElementById('liveTag').style.display = 'inline';
+  if(activeHls) { activeHls.destroy(); activeHls = null; }
+  if(Hls.isSupported()) {
+    var hls = new Hls({enableWorker:true, lowLatencyMode:true});
+    hls.loadSource(ch.url);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, function(){ video.play().catch(function(){}); });
+    hls.on(Hls.Events.ERROR, function(e,data){ if(data.fatal) tryNative(video, ch.url); });
+    activeHls = hls;
+  } else if(video.canPlayType('application/vnd.apple.mpegurl')) {
+    tryNative(video, ch.url);
+  } else {
+    tryNative(video, ch.url);
+  }
+}
+
+function tryNative(video, url) {
+  video.src = url;
+  video.play().catch(function(){});
+}
+
+function setStatus(id, msg, type) {
+  var el = document.getElementById(id);
+  el.style.display = 'block';
+  el.textContent = msg;
+  el.className = 'status'+(type?' '+type:'');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+showTab('player');
+</script>
