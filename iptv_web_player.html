@@ -215,11 +215,19 @@ function loadXtream() {
   var pass = document.getElementById('xtPass').value.trim();
   if (!host || !user || !pass) { setStatus('xtStatus', 'Preencha todos os campos.', 'err'); return; }
   var apiUrl = host + '/player_api.php?username=' + encodeURIComponent(user) + '&password=' + encodeURIComponent(pass) + '&action=get_live_streams';
-  setStatus('xtStatus', 'Conectando...', '');
-  fetch(proxify(apiUrl))
-    .then(function(r) { return r.json(); })
+  setStatus('xtStatus', 'Conectando (tentativa direta)...', '');
+
+  // Tenta primeiro sem proxy, depois com proxy
+  fetchJson(apiUrl)
+    .catch(function() {
+      setStatus('xtStatus', 'Tentando via proxy...', '');
+      return fetchJson(proxify(apiUrl));
+    })
     .then(function(data) {
-      if (!Array.isArray(data) || !data.length) { setStatus('xtStatus', 'Sem canais ou credenciais inválidas.', 'err'); return; }
+      if (!Array.isArray(data) || !data.length) {
+        setStatus('xtStatus', 'Sem canais retornados. Verifique usuário, senha e se o servidor está online.', 'err');
+        return;
+      }
       channels = data.map(function(s) {
         return {
           name: s.name || 'Canal',
@@ -233,7 +241,22 @@ function loadXtream() {
       setStatus('xtStatus', channels.length + ' canais carregados.', 'ok');
       showTab('player');
     })
-    .catch(function(e) { setStatus('xtStatus', 'Erro: ' + e.message, 'err'); });
+    .catch(function(e) {
+      setStatus('xtStatus', 'Falha na conexão. Verifique: 1) host correto com porta (ex: http://srv.com:8080) 2) usuário e senha 3) servidor online', 'err');
+    });
+}
+
+function fetchJson(url) {
+  return fetch(url)
+    .then(function(r) {
+      var ct = r.headers.get('content-type') || '';
+      if (!ct.includes('json')) {
+        return r.text().then(function(txt) {
+          throw new Error('Servidor retornou HTML em vez de JSON. Resposta: ' + txt.slice(0, 80));
+        });
+      }
+      return r.json();
+    });
 }
 
 function renderChannels() {
